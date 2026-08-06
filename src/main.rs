@@ -36,7 +36,12 @@ fn main() {
 
     loop {
         /* FETCH */
+
+        // construct instruction from memory at PC
         let instr = Instruction::from(mem[regs[R_PC] as usize]);
+        // then evaluate the instruction, passing in the registers and memory
         instr.eval(&mut regs, &mut mem);
+        // this two steps could be combined into one
+        // but as this is a didactic project, I prefered to keep them separate for clarity
     }
 }

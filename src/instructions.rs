@@ -1,24 +1,26 @@
+use crate::{MEMORY_MAX, N_REGS};
+
 pub enum Instruction {
-    BR,     // branch
-    ADDReg, // add register
-    ADDImm, // add immediate
-    LD,     // load
-    ST,     // store
-    JSR,    // jump to subroutine pc offset
-    JSRr,   // jump to subroutine register
-    ANDReg, // and register
-    ANDImm, // and immediate
-    LDR,    // load register
-    STR,    // store register
-    RTI,    // unused
-    NOT,    // bitwise not
-    LDI,    // load indirect
-    STI,    // store indirect
-    JMP,    // jump
-    RET,    // return
-    RES,    // reserved (unused)
-    LEA,    // load effective address
-    TRAP,   // execute trap
+    BR,                                           // branch
+    ADDReg { dr: usize, sr1: usize, sr2: usize }, // add register
+    ADDImm { dr: usize, sr1: usize, imm: u16 },   // add immediate
+    LD,                                           // load
+    ST,                                           // store
+    JSR,                                          // jump to subroutine pc offset
+    JSRr,                                         // jump to subroutine register
+    ANDReg,                                       // and register
+    ANDImm,                                       // and immediate
+    LDR,                                          // load register
+    STR,                                          // store register
+    RTI,                                          // unused
+    NOT,                                          // bitwise not
+    LDI,                                          // load indirect
+    STI,                                          // store indirect
+    JMP,                                          // jump
+    RET,                                          // return
+    RES,                                          // reserved (unused)
+    LEA,                                          // load effective address
+    TRAP,                                         // execute trap
 }
 
 impl Instruction {
@@ -46,11 +48,11 @@ impl Instruction {
         }
     }
 
-    pub fn eval(&self, regs: &mut [u16; 10], mem: &mut [u16; 65536]) {
-        match &self {
+    pub fn eval(self, regs: &mut [u16; N_REGS], mem: &mut [u16; MEMORY_MAX]) {
+        match self {
             Instruction::BR => todo!(),
-            Instruction::ADDReg => todo!(),
-            Instruction::ADDImm => todo!(),
+            Instruction::ADDReg { dr, sr1, sr2 } => regs[dr] = regs[sr1].wrapping_add(regs[sr2]),
+            Instruction::ADDImm { dr, sr1, imm } => regs[dr] = regs[sr1].wrapping_add(imm as u16),
             Instruction::LD => todo!(),
             Instruction::ST => todo!(),
             Instruction::JSR => todo!(),
@@ -76,7 +78,20 @@ impl Instruction {
     }
 
     fn build_add(body: u16) -> Instruction {
-        todo!()
+        let dr = (body & 0b0000_1110_0000_0000 >> 9) as usize;
+        let sr1 = (body & 0b0000_0001_1100_0000 >> 6) as usize;
+        let is_imm = body & 0b0000_0000_0010_0000 != 0;
+        if is_imm {
+            // extend sign bit for immediate value
+            let mut imm = body & 0b0000_0000_0001_1111;
+            if imm & 0b0000_0000_0001_0000 != 0 {
+                imm = imm | 0b1111_1111_1110_0000;
+            }
+            Self::ADDImm { dr, sr1, imm }
+        } else {
+            let sr2 = (body & 0b0000_0000_0000_0111) as usize;
+            Self::ADDReg { dr, sr1, sr2 }
+        }
     }
 
     fn build_ld(body: u16) -> Instruction {
