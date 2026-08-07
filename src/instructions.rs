@@ -1,4 +1,4 @@
-use crate::{FL_NEG, FL_POS, FL_ZRO, MEMORY_MAX, N_REGS, PC_START, R_COND, R_P7, R_PC};
+use crate::{FL_NEG, FL_POS, FL_ZRO, MEMORY_MAX, N_REGS, R_COND, R_P7, R_PC};
 
 pub enum Instruction {
     BR { offset: u16, n: u16, z: u16, p: u16 },   // branch
@@ -13,7 +13,7 @@ pub enum Instruction {
     LDR { dr: usize, base: usize, offset: u16 },  // load register
     STR,                                          // store register
     RTI,                                          // unused
-    NOT,                                          // bitwise not
+    NOT { dr: usize, sr: usize },                 // bitwise not
     LDI { dr: usize, offset: u16 },               // load indirect
     STI,                                          // store indirect
     JMP { base: usize },                          // jump
@@ -92,7 +92,10 @@ impl Instruction {
             }
             Instruction::STR => todo!(),
             Instruction::RTI => todo!(),
-            Instruction::NOT => todo!(),
+            Instruction::NOT { dr, sr } => {
+                regs[dr] = !regs[sr];
+                Self::update_flags(regs, dr);
+            }
             Instruction::LDI { dr, offset } => {
                 let addr = mem[regs[R_PC].wrapping_add(offset) as usize];
                 regs[dr] = mem[addr as usize];
@@ -182,7 +185,9 @@ impl Instruction {
     }
 
     fn build_not(body: u16) -> Instruction {
-        todo!()
+        let dr = ((body & 0b0000_1110_0000_0000) >> 9) as usize;
+        let sr = ((body & 0b0000_0001_1100_0000) >> 6) as usize;
+        Instruction::NOT { dr, sr }
     }
 
     fn build_ldi(body: u16) -> Instruction {

@@ -258,4 +258,24 @@ mod tests {
         assert_eq!(regs[4], 3072);
         assert!(regs[R_COND] == FL_POS);
     }
+
+    #[test]
+    fn test_not() {
+        // opcode: 1001, dr: 000, base: 001, empty: 111111
+        let op_body = 0b1001_010_010_111111;
+        let instruction = Instruction::from(op_body);
+        match instruction {
+            Instruction::NOT { dr, sr } => {
+                assert_eq!(dr, 2);
+                assert_eq!(sr, 2);
+            }
+            _ => panic!("Expected NOT instruction"),
+        }
+        let mut regs = [0u16; N_REGS];
+        let mut mem = [0u16; MEMORY_MAX];
+        regs[2] = 0xF0FF;
+        instruction.eval(&mut regs, &mut mem);
+        assert_eq!(regs[2], 0x0F00);
+        assert!(regs[R_COND] == FL_POS);
+    }
 }
