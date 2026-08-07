@@ -1,6 +1,7 @@
 use crate::instructions::Instruction;
 
 mod instructions;
+mod instructions_tests;
 
 // Constants
 const MEMORY_MAX: usize = 1 << 16;
