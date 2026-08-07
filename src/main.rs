@@ -1,5 +1,6 @@
 use crate::instructions::Instruction;
 
+mod image;
 mod instructions;
 mod instructions_tests;
 mod traps;
@@ -26,12 +27,25 @@ pub const FL_POS: u16 = 1 << 0;
 pub const FL_ZRO: u16 = 1 << 1;
 pub const FL_NEG: u16 = 1 << 2;
 
-fn main() {
+fn main() -> Result<(), i32> {
+    let args = std::env::args().collect::<Vec<String>>();
+    if args.len() < 2 {
+        eprintln!("Usage: {} <image-file>", args[0]);
+        return Err(1);
+    }
+
     let mut regs: [u16; N_REGS] = [0; N_REGS];
     let mut mem: [u16; MEMORY_MAX] = [0; MEMORY_MAX];
+
+    for arg in &args[1..] {
+        if let Err(e) = image::load_image_file(arg, &mut mem) {
+            eprintln!("Failed to load image file '{}': {}", arg, e);
+            return Err(1);
+        }
+    }
+
     /* since exactly one condition flag should be set at any given time, set the Z flag */
     regs[R_COND] = FL_NEG;
-
     /* set the PC to starting position */
     /* 0x3000 is the default */
     regs[R_PC] = PC_START;
@@ -47,5 +61,9 @@ fn main() {
         }
         // this two steps could be combined into one
         // but as this is a didactic project, I prefered to keep them separate for clarity
+
+        regs[R_PC] = regs[R_PC].wrapping_add(1);
     }
+
+    Ok(())
 }
