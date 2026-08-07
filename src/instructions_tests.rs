@@ -320,4 +320,25 @@ mod tests {
         instruction.eval(&mut regs, &mut mem);
         assert_eq!(mem[3072], 123);
     }
+
+    #[test]
+    fn test_store_indirect() {
+        // opcode: 1011, dr: 100, offset: 001001000
+        let op_body = 0b1011_100_001001000;
+        let instruction = Instruction::from(op_body);
+        match instruction {
+            Instruction::STI { sr, offset } => {
+                assert_eq!(sr, 4);
+                assert_eq!(offset, 72);
+            }
+            _ => panic!("Expected STI instruction"),
+        }
+        let mut regs = [0u16; N_REGS];
+        let mut mem = [0u16; MEMORY_MAX];
+        regs[R_PC] = 3000;
+        mem[3072] = 67;
+        regs[4] = 10;
+        instruction.eval(&mut regs, &mut mem);
+        assert_eq!(mem[67], 10);
+    }
 }

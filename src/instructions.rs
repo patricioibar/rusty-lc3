@@ -15,7 +15,7 @@ pub enum Instruction {
     RTI,                                          // unused
     NOT { dr: usize, sr: usize },                 // bitwise not
     LDI { dr: usize, offset: u16 },               // load indirect
-    STI,                                          // store indirect
+    STI { sr: usize, offset: u16 },               // store indirect
     JMP { base: usize },                          // jump
     RES,                                          // reserved (unused)
     LEA { dr: usize, offset: u16 },               // load effective address
@@ -103,7 +103,10 @@ impl Instruction {
                 regs[dr] = mem[addr as usize];
                 Self::update_flags(regs, dr);
             }
-            Instruction::STI => todo!(),
+            Instruction::STI { sr, offset } => {
+                let addr = mem[regs[R_PC].wrapping_add(offset) as usize];
+                mem[addr as usize] = regs[sr];
+            }
             Instruction::JMP { base } => regs[R_PC] = regs[base],
             Instruction::RES => return, // unused, noop
             Instruction::LEA { dr, offset } => {
@@ -197,7 +200,9 @@ impl Instruction {
     }
 
     fn build_sti(body: u16) -> Instruction {
-        todo!()
+        let sr = ((body & 0b0000_1110_0000_0000) >> 9) as usize;
+        let offset = Self::sign_extend(body & 0b0000_0001_1111_1111, 9);
+        Self::STI { sr, offset }
     }
 
     fn build_jmp(body: u16) -> Instruction {
