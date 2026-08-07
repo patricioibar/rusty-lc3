@@ -1,14 +1,14 @@
-use std::io::Write;
+use std::io::{Read, Write, stdout};
 
 use crate::{MEMORY_MAX, N_REGS, R_P0};
 
 pub enum Trap {
-    GETC = 0x20,  /* get character from keyboard, not echoed onto the terminal */
-    OUT = 0x21,   /* output a character */
-    PUTS = 0x22,  /* output a word string */
-    IN = 0x23,    /* get character from keyboard, echoed onto the terminal */
-    PUTSP = 0x24, /* output a byte string */
-    HALT = 0x25,  /* halt the program */
+    GETC,  // get character from keyboard, not echoed onto the terminal
+    OUT,   // output a character
+    PUTS,  // output a word string
+    IN,    // get character from keyboard, echoed onto the terminal
+    PUTSP, // output a byte string
+    HALT,  // halt the program
 }
 
 impl Trap {
@@ -26,17 +26,24 @@ impl Trap {
 
     pub fn exec(self, regs: &mut [u16; N_REGS], mem: &mut [u16; MEMORY_MAX]) {
         match self {
-            Trap::GETC => todo!(),
-            Trap::OUT => todo!(),
+            Trap::GETC => {
+                let mut buf = [0u8];
+                let _ = std::io::stdin().read_exact(&mut buf);
+                regs[R_P0] = buf[0] as u16;
+            }
+            Trap::OUT => {
+                let _ = stdout().write(&[regs[R_P0] as u8]);
+                let _ = stdout().flush();
+            }
             Trap::PUTS => {
                 let mut i = regs[R_P0] as usize;
                 while let c = mem[i]
                     && c != 0x00
                 {
-                    let _ = std::io::stdout().write(&[c as u8]);
+                    let _ = stdout().write(&[c as u8]);
                     i = i + 1;
                 }
-                let _ = std::io::stdout().flush();
+                let _ = stdout().flush();
             }
             Trap::IN => todo!(),
             Trap::PUTSP => todo!(),
@@ -74,5 +81,27 @@ mod tests {
         let mut output = String::new();
         buf.read_to_string(&mut output).unwrap();
         assert_eq!(&output, "hola");
+    }
+
+    #[test]
+    fn test_out() {
+        // opcode: 1111, empty: 000, trapvect: 00100001
+        let op_body = 0b1111_0000_00100001;
+        let instruction = Instruction::from(op_body);
+        assert!(matches!(
+            &instruction,
+            Instruction::TRAP { trap: Trap::OUT }
+        ));
+
+        // intercept stdout
+        let mut buf = BufferRedirect::stdout().unwrap();
+        let mut regs = [0u16; N_REGS];
+        let mut mem = [0u16; MEMORY_MAX];
+        regs[0] = 'X' as u16;
+        instruction.eval(&mut regs, &mut mem);
+
+        let mut output = String::new();
+        buf.read_to_string(&mut output).unwrap();
+        assert_eq!(&output, "X");
     }
 }
