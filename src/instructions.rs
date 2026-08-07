@@ -1,4 +1,4 @@
-use crate::{MEMORY_MAX, N_REGS};
+use crate::{FL_NEG, FL_POS, FL_ZRO, MEMORY_MAX, N_REGS, R_COND};
 
 pub enum Instruction {
     BR,                                           // branch
@@ -51,8 +51,14 @@ impl Instruction {
     pub fn eval(self, regs: &mut [u16; N_REGS], mem: &mut [u16; MEMORY_MAX]) {
         match self {
             Instruction::BR => todo!(),
-            Instruction::ADDReg { dr, sr1, sr2 } => regs[dr] = regs[sr1].wrapping_add(regs[sr2]),
-            Instruction::ADDImm { dr, sr1, imm } => regs[dr] = regs[sr1].wrapping_add(imm as u16),
+            Instruction::ADDReg { dr, sr1, sr2 } => {
+                regs[dr] = regs[sr1].wrapping_add(regs[sr2]);
+                Self::update_flags(regs, dr);
+            }
+            Instruction::ADDImm { dr, sr1, imm } => {
+                regs[dr] = regs[sr1].wrapping_add(imm as u16);
+                Self::update_flags(regs, dr);
+            }
             Instruction::LD => todo!(),
             Instruction::ST => todo!(),
             Instruction::JSR => todo!(),
@@ -148,5 +154,15 @@ impl Instruction {
 
     fn build_trap(body: u16) -> Instruction {
         todo!()
+    }
+
+    fn update_flags(regs: &mut [u16; N_REGS], dr: usize) {
+        if regs[dr] == 0 {
+            regs[R_COND] = FL_ZRO;
+        } else if (regs[dr] & 0b1000_0000_0000_0000) == 1 {
+            regs[R_COND] = FL_NEG;
+        } else {
+            regs[R_COND] = FL_POS;
+        }
     }
 }
