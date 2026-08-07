@@ -14,7 +14,7 @@ pub enum Instruction {
     STR,                                          // store register
     RTI,                                          // unused
     NOT,                                          // bitwise not
-    LDI,                                          // load indirect
+    LDI { dr: usize, offset: u16 },               // load indirect
     STI,                                          // store indirect
     JMP { base: usize },                          // jump
     RES,                                          // reserved (unused)
@@ -90,7 +90,11 @@ impl Instruction {
             Instruction::STR => todo!(),
             Instruction::RTI => todo!(),
             Instruction::NOT => todo!(),
-            Instruction::LDI => todo!(),
+            Instruction::LDI { dr, offset } => {
+                let addr = mem[regs[R_PC].wrapping_add(offset) as usize];
+                regs[dr] = mem[addr as usize];
+                Self::update_flags(regs, dr);
+            }
             Instruction::STI => todo!(),
             Instruction::JMP { base } => regs[R_PC] = regs[base],
             Instruction::RES => return, // unused, noop
@@ -173,7 +177,9 @@ impl Instruction {
     }
 
     fn build_ldi(body: u16) -> Instruction {
-        todo!()
+        let dr = ((body & 0b0000_1110_0000_0000) >> 9) as usize;
+        let offset = Self::sign_extend(body & 0b0000_0001_1111_1111, 9);
+        Self::LDI { dr, offset }
     }
 
     fn build_sti(body: u16) -> Instruction {
@@ -200,7 +206,7 @@ impl Instruction {
     fn update_flags(regs: &mut [u16; N_REGS], dr: usize) {
         if regs[dr] == 0 {
             regs[R_COND] = FL_ZRO;
-        } else if (regs[dr] & 0b1000_0000_0000_0000) == 1 {
+        } else if (regs[dr] & 0b1000_0000_0000_0000) != 0 {
             regs[R_COND] = FL_NEG;
         } else {
             regs[R_COND] = FL_POS;
@@ -409,5 +415,29 @@ mod tests {
         instruction.eval(&mut regs, &mut mem);
         assert_eq!(regs[4], 1100);
         assert!(regs[R_COND] & FL_POS != 0);
+    }
+
+    #[test]
+    fn test_load_indirect() {
+        // opcode: 1010, dr: 010, offset: 001001011
+        let op_body = 0b1010_010_001001011;
+        let instruction = Instruction::from(op_body);
+        match instruction {
+            Instruction::LDI { dr, offset } => {
+                assert_eq!(dr, 2);
+                assert_eq!(offset, 75);
+            }
+            _ => panic!("Expected LDI instruction"),
+        }
+        let mut regs = [0u16; N_REGS];
+        let mut mem = [0u16; MEMORY_MAX];
+        regs[R_PC] = 100;
+        regs[2] = 0xFFFF;
+        mem[175] = 9999;
+        mem[9999] = 0xF0CA;
+        instruction.eval(&mut regs, &mut mem);
+        assert_eq!(regs[2], 0xF0CA);
+        assert_eq!(regs[R_PC], 100);
+        assert!(regs[R_COND] == FL_NEG);
     }
 }
