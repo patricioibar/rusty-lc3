@@ -35,12 +35,12 @@ impl Instruction {
             5 => Self::build_and(body),
             6 => Self::build_ldr(body),
             7 => Self::build_str(body),
-            8 => Self::build_rti(body),
+            8 => Self::RTI, // unused
             9 => Self::build_not(body),
             10 => Self::build_ldi(body),
             11 => Self::build_sti(body),
             12 => Self::build_jmp(body),
-            13 => Self::build_res(body), // unused
+            13 => Self::RES, // unused
             14 => Self::build_lea(body),
             15 => Self::build_trap(body),
             _ => panic!("Invalid opcode: {}", opcode),
@@ -91,7 +91,7 @@ impl Instruction {
                 Self::update_flags(regs, dr);
             }
             Instruction::STR => todo!(),
-            Instruction::RTI => todo!(),
+            Instruction::RTI => return, // unused, noop
             Instruction::NOT { dr, sr } => {
                 regs[dr] = !regs[sr];
                 Self::update_flags(regs, dr);
@@ -180,10 +180,6 @@ impl Instruction {
         todo!()
     }
 
-    fn build_rti(body: u16) -> Instruction {
-        todo!()
-    }
-
     fn build_not(body: u16) -> Instruction {
         let dr = ((body & 0b0000_1110_0000_0000) >> 9) as usize;
         let sr = ((body & 0b0000_0001_1100_0000) >> 6) as usize;
@@ -203,10 +199,6 @@ impl Instruction {
     fn build_jmp(body: u16) -> Instruction {
         let base = ((body & 0b0000_000_111_000000) >> 6) as usize;
         Self::JMP { base }
-    }
-
-    fn build_res(body: u16) -> Instruction {
-        Self::RES
     }
 
     fn build_lea(body: u16) -> Instruction {

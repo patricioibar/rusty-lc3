@@ -278,4 +278,26 @@ mod tests {
         assert_eq!(regs[2], 0x0F00);
         assert!(regs[R_COND] == FL_POS);
     }
+
+    #[test]
+    fn test_res() {
+        // opcode: 1101
+        let op_body = 0b1101_000000000000;
+        let instruction = Instruction::from(op_body);
+        match instruction {
+            Instruction::RES => return,
+            _ => panic!("Expected RES instruction"),
+        }
+    }
+
+    #[test]
+    fn test_rti() {
+        // opcode: 1000
+        let op_body = 0b1000_000000000000;
+        let instruction = Instruction::from(op_body);
+        match instruction {
+            Instruction::RTI => return,
+            _ => panic!("Expected RTI instruction"),
+        }
+    }
 }
