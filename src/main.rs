@@ -1,7 +1,4 @@
-use crate::{
-    instructions::Instruction,
-    memory::{MEMORY_MAX, Memory},
-};
+use crate::{instructions::Instruction, memory::Memory};
 
 mod image;
 mod instructions;

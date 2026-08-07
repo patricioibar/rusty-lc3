@@ -41,7 +41,7 @@ impl Trap {
                     && c != 0x00
                 {
                     let _ = stdout().write(&[c as u8]);
-                    i = i + 1;
+                    i += 1;
                 }
                 let _ = stdout().flush();
             }
@@ -62,7 +62,7 @@ impl Trap {
                     if ((c >> 8) as u8) != 0x00 {
                         let _ = stdout().write(&[(c >> 8) as u8]);
                     }
-                    i = i + 1;
+                    i += 1;
                 }
                 let _ = stdout().flush();
             }

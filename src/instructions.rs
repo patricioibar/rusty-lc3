@@ -62,7 +62,7 @@ impl Instruction {
                 Self::update_flags(regs, dr);
             }
             Instruction::ADDImm { dr, sr1, imm } => {
-                regs[dr] = regs[sr1].wrapping_add(imm as u16);
+                regs[dr] = regs[sr1].wrapping_add(imm);
                 Self::update_flags(regs, dr);
             }
             Instruction::LD { dr, offset } => {
@@ -155,12 +155,12 @@ impl Instruction {
     }
 
     fn build_jsr(body: u16) -> Instruction {
-        let is_reg = (body & 0b0000_1_00000000000) == 0;
+        let is_reg = (body & 0b0000_1000_0000_0000) == 0;
         if is_reg {
-            let base = ((body & 0b0000_000_111_000000) >> 6) as usize;
+            let base = ((body & 0b0000_0001_1100_0000) >> 6) as usize;
             Self::JSRr { base }
         } else {
-            let offset = Self::sign_extend(body & 0b0000_0_111_1111_1111, 11);
+            let offset = Self::sign_extend(body & 0b0000_0111_1111_1111, 11);
             Self::JSR { offset }
         }
     }
@@ -212,7 +212,7 @@ impl Instruction {
     }
 
     fn build_jmp(body: u16) -> Instruction {
-        let base = ((body & 0b0000_000_111_000000) >> 6) as usize;
+        let base = ((body & 0b0000_0001_1100_0000) >> 6) as usize;
         Self::JMP { base }
     }
 
