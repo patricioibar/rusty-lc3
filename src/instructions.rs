@@ -1,4 +1,4 @@
-use crate::{FL_NEG, FL_POS, FL_ZRO, MEMORY_MAX, N_REGS, R_COND, R_P7, R_PC, traps::Trap};
+use crate::{FL_NEG, FL_POS, FL_ZRO, N_REGS, R_COND, R_P7, R_PC, memory::Memory, traps::Trap};
 
 pub enum Instruction {
     BR { offset: u16, n: u16, z: u16, p: u16 },   // branch
@@ -47,7 +47,7 @@ impl Instruction {
         }
     }
 
-    pub fn eval(self, regs: &mut [u16; N_REGS], mem: &mut [u16; MEMORY_MAX]) -> bool {
+    pub fn eval(self, regs: &mut [u16; N_REGS], mem: &mut Memory) -> bool {
         match self {
             Instruction::BR { offset, n, z, p } => {
                 if (n & regs[R_COND] == FL_NEG)
@@ -66,11 +66,11 @@ impl Instruction {
                 Self::update_flags(regs, dr);
             }
             Instruction::LD { dr, offset } => {
-                regs[dr] = mem[regs[R_PC].wrapping_add(offset) as usize];
+                regs[dr] = mem.get(regs[R_PC].wrapping_add(offset) as usize);
                 Self::update_flags(regs, dr);
             }
             Instruction::ST { sr, offset } => {
-                mem[regs[R_PC].wrapping_add(offset) as usize] = regs[sr]
+                mem.set(regs[R_PC].wrapping_add(offset) as usize, regs[sr]);
             }
             Instruction::JSR { offset } => {
                 regs[R_P7] = regs[R_PC];
@@ -89,11 +89,11 @@ impl Instruction {
                 Self::update_flags(regs, dr);
             }
             Instruction::LDR { dr, base, offset } => {
-                regs[dr] = mem[regs[base].wrapping_add(offset) as usize];
+                regs[dr] = mem.get(regs[base].wrapping_add(offset) as usize);
                 Self::update_flags(regs, dr);
             }
             Instruction::STR { sr, base, offset } => {
-                mem[regs[base].wrapping_add(offset) as usize] = regs[sr];
+                mem.set(regs[base].wrapping_add(offset) as usize, regs[sr]);
             }
             Instruction::RTI => {} // unused, noop
             Instruction::NOT { dr, sr } => {
@@ -101,13 +101,13 @@ impl Instruction {
                 Self::update_flags(regs, dr);
             }
             Instruction::LDI { dr, offset } => {
-                let addr = mem[regs[R_PC].wrapping_add(offset) as usize];
-                regs[dr] = mem[addr as usize];
+                let addr = mem.get(regs[R_PC].wrapping_add(offset) as usize);
+                regs[dr] = mem.get(addr as usize);
                 Self::update_flags(regs, dr);
             }
             Instruction::STI { sr, offset } => {
-                let addr = mem[regs[R_PC].wrapping_add(offset) as usize];
-                mem[addr as usize] = regs[sr];
+                let addr = mem.get(regs[R_PC].wrapping_add(offset) as usize);
+                mem.set(addr as usize, regs[sr]);
             }
             Instruction::JMP { base } => regs[R_PC] = regs[base],
             Instruction::RES => {} // unused, noop

@@ -1,7 +1,8 @@
 #[cfg(test)]
 mod tests {
     use crate::{
-        FL_NEG, FL_POS, FL_ZRO, MEMORY_MAX, N_REGS, R_COND, R_P7, R_PC, instructions::Instruction,
+        FL_NEG, FL_POS, FL_ZRO, N_REGS, R_COND, R_P7, R_PC, instructions::Instruction,
+        memory::Memory,
     };
 
     #[test]
@@ -19,7 +20,7 @@ mod tests {
             _ => panic!("Expected BR instruction"),
         }
         let mut regs = [0u16; N_REGS];
-        let mut mem = [0u16; MEMORY_MAX];
+        let mut mem = Memory::new();
         regs[R_PC] = 100;
         regs[R_COND] = FL_NEG; // Set condition to negative
         instruction.eval(&mut regs, &mut mem);
@@ -40,7 +41,7 @@ mod tests {
             _ => panic!("Expected ADDReg instruction"),
         }
         let mut regs = [0u16; N_REGS];
-        let mut mem = [0u16; MEMORY_MAX];
+        let mut mem = Memory::new();
         regs[2] = 5;
         regs[3] = 10;
         instruction.eval(&mut regs, &mut mem);
@@ -62,7 +63,7 @@ mod tests {
             _ => panic!("Expected ADDImm instruction"),
         }
         let mut regs = [0u16; N_REGS];
-        let mut mem = [0u16; MEMORY_MAX];
+        let mut mem = Memory::new();
         regs[2] = 5;
         instruction.eval(&mut regs, &mut mem);
         assert_eq!(regs[1], 0);
@@ -83,7 +84,7 @@ mod tests {
             _ => panic!("Expected ANDReg instruction"),
         }
         let mut regs = [0u16; N_REGS];
-        let mut mem = [0u16; MEMORY_MAX];
+        let mut mem = Memory::new();
         regs[2] = 0xF0F0;
         regs[3] = 0x0F1F;
         instruction.eval(&mut regs, &mut mem);
@@ -105,7 +106,7 @@ mod tests {
             _ => panic!("Expected ANDImm instruction"),
         }
         let mut regs = [0u16; N_REGS];
-        let mut mem = [0u16; MEMORY_MAX];
+        let mut mem = Memory::new();
         regs[2] = 0xF0F0;
         instruction.eval(&mut regs, &mut mem);
         assert_eq!(regs[1], 0xF0F0 & 0x000F);
@@ -124,7 +125,7 @@ mod tests {
             _ => panic!("Expected JMP instruction"),
         }
         let mut regs = [0u16; N_REGS];
-        let mut mem = [0u16; MEMORY_MAX];
+        let mut mem = Memory::new();
         regs[6] = 1234;
         instruction.eval(&mut regs, &mut mem);
         assert_eq!(regs[R_PC], 1234);
@@ -142,7 +143,7 @@ mod tests {
             _ => panic!("Expected JSR instruction"),
         }
         let mut regs = [0u16; N_REGS];
-        let mut mem = [0u16; MEMORY_MAX];
+        let mut mem = Memory::new();
         regs[R_PC] = 1200;
         instruction.eval(&mut regs, &mut mem);
         assert_eq!(regs[R_PC], 1211);
@@ -161,7 +162,7 @@ mod tests {
             _ => panic!("Expected JSRr instruction"),
         }
         let mut regs = [0u16; N_REGS];
-        let mut mem = [0u16; MEMORY_MAX];
+        let mut mem = Memory::new();
         regs[R_PC] = 8900;
         regs[3] = 67;
         instruction.eval(&mut regs, &mut mem);
@@ -182,10 +183,10 @@ mod tests {
             _ => panic!("Expected LD instruction"),
         }
         let mut regs = [0u16; N_REGS];
-        let mut mem = [0u16; MEMORY_MAX];
+        let mut mem = Memory::new();
         regs[R_PC] = 3000;
         regs[4] = 123;
-        mem[3072] = 1100;
+        mem.set(3072, 1100);
         instruction.eval(&mut regs, &mut mem);
         assert_eq!(regs[4], 1100);
         assert!(regs[R_COND] & FL_POS != 0);
@@ -204,11 +205,11 @@ mod tests {
             _ => panic!("Expected LDI instruction"),
         }
         let mut regs = [0u16; N_REGS];
-        let mut mem = [0u16; MEMORY_MAX];
+        let mut mem = Memory::new();
         regs[R_PC] = 100;
         regs[2] = 0xFFFF;
-        mem[175] = 9999;
-        mem[9999] = 0xF0CA;
+        mem.set(175, 9999);
+        mem.set(9999, 0xF0CA);
         instruction.eval(&mut regs, &mut mem);
         assert_eq!(regs[2], 0xF0CA);
         assert_eq!(regs[R_PC], 100);
@@ -229,10 +230,10 @@ mod tests {
             _ => panic!("Expected LDR instruction"),
         }
         let mut regs = [0u16; N_REGS];
-        let mut mem = [0u16; MEMORY_MAX];
+        let mut mem = Memory::new();
         regs[0] = 100;
         regs[1] = 1203;
-        mem[1230] = 0xABCD;
+        mem.set(1230, 0xABCD);
         instruction.eval(&mut regs, &mut mem);
         assert_eq!(regs[0], 0xABCD);
         assert!(regs[R_COND] == FL_NEG);
@@ -251,7 +252,7 @@ mod tests {
             _ => panic!("Expected LEA instruction"),
         }
         let mut regs = [0u16; N_REGS];
-        let mut mem = [0u16; MEMORY_MAX];
+        let mut mem = Memory::new();
         regs[R_PC] = 3000;
         regs[4] = 123;
         instruction.eval(&mut regs, &mut mem);
@@ -272,7 +273,7 @@ mod tests {
             _ => panic!("Expected NOT instruction"),
         }
         let mut regs = [0u16; N_REGS];
-        let mut mem = [0u16; MEMORY_MAX];
+        let mut mem = Memory::new();
         regs[2] = 0xF0FF;
         instruction.eval(&mut regs, &mut mem);
         assert_eq!(regs[2], 0x0F00);
@@ -314,11 +315,11 @@ mod tests {
             _ => panic!("Expected ST instruction"),
         }
         let mut regs = [0u16; N_REGS];
-        let mut mem = [0u16; MEMORY_MAX];
+        let mut mem = Memory::new();
         regs[R_PC] = 3000;
         regs[4] = 123;
         instruction.eval(&mut regs, &mut mem);
-        assert_eq!(mem[3072], 123);
+        assert_eq!(mem.get(3072), 123);
     }
 
     #[test]
@@ -334,12 +335,12 @@ mod tests {
             _ => panic!("Expected STI instruction"),
         }
         let mut regs = [0u16; N_REGS];
-        let mut mem = [0u16; MEMORY_MAX];
+        let mut mem = Memory::new();
         regs[R_PC] = 3000;
-        mem[3072] = 67;
+        mem.set(3072, 67);
         regs[4] = 10;
         instruction.eval(&mut regs, &mut mem);
-        assert_eq!(mem[67], 10);
+        assert_eq!(mem.get(67), 10);
     }
 
     #[test]
@@ -356,10 +357,10 @@ mod tests {
             _ => panic!("Expected STR instruction"),
         }
         let mut regs = [0u16; N_REGS];
-        let mut mem = [0u16; MEMORY_MAX];
+        let mut mem = Memory::new();
         regs[0] = 100;
         regs[1] = 123;
-        mem[1230] = 0xABCD;
+        mem.set(1230, 0xABCD);
         instruction.eval(&mut regs, &mut mem);
         assert_eq!(regs[0], 100);
     }

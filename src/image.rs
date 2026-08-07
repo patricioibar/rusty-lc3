@@ -3,21 +3,21 @@ use std::{
     io::{BufReader, Error, Read},
 };
 
-use crate::MEMORY_MAX;
+use crate::memory::Memory;
 
-pub fn load_image_file(path: &str, mem: &mut [u16; MEMORY_MAX]) -> Result<(), Error> {
+pub fn load_image_file(path: &str, mem: &mut Memory) -> Result<(), Error> {
     let file = File::open(path)?;
     load_image(BufReader::new(file), mem)
 }
 
-fn load_image(mut reader: impl Read, mem: &mut [u16; MEMORY_MAX]) -> Result<(), Error> {
+fn load_image(mut reader: impl Read, mem: &mut Memory) -> Result<(), Error> {
     let mut buf = vec![];
     reader.read_to_end(&mut buf)?;
     let mut iter = buf.iter();
-    let mut i: usize;
+    let mut addr: usize;
     if let (Some(first), Some(second)) = (iter.next(), iter.next()) {
         // swap bytes because LC3 is big-endian
-        i = (((*second as u16) << 8) | *first as u16) as usize;
+        addr = (((*second as u16) << 8) | *first as u16) as usize;
     } else {
         return Err(Error::new(
             std::io::ErrorKind::InvalidData,
@@ -26,11 +26,12 @@ fn load_image(mut reader: impl Read, mem: &mut [u16; MEMORY_MAX]) -> Result<(), 
     }
     // swap all bytes because LC3 is big-endian
     while let Some(byte) = iter.next() {
-        mem[i] = *byte as u16;
+        let mut value = *byte as u16;
         if let Some(byte) = iter.next() {
-            mem[i] |= (*byte as u16) << 8;
+            value |= (*byte as u16) << 8;
         }
-        i += 1;
+        mem.set(addr, value);
+        addr += 1;
     }
     Ok(())
 }
@@ -49,9 +50,12 @@ mod tests {
         // 0x00 0xFF => 0xFF00
         // 0x12 0x34 => 0x3412
         let image = [0x01, 0x00, 0x02, 0x00, 0xFF, 0x00, 0x00, 0xFF, 0x12, 0x34];
-        let mut mem = [0u16; MEMORY_MAX];
+        let mut mem = Memory::new();
         load_image(&image[..], &mut mem)?;
-        assert_eq!(mem[0..5], [0x0000, 0x0002, 0x00FF, 0xFF00, 0x3412]);
+        assert_eq!(
+            mem.get_range(0..5),
+            [0x0000, 0x0002, 0x00FF, 0xFF00, 0x3412]
+        );
         Ok(())
     }
 }

@@ -1,6 +1,6 @@
 use std::io::{Read, Write, stdin, stdout};
 
-use crate::{MEMORY_MAX, N_REGS, R_P0};
+use crate::{N_REGS, R_P0, memory::Memory};
 
 pub enum Trap {
     GETC,  // get character from keyboard, not echoed onto the terminal
@@ -24,7 +24,7 @@ impl Trap {
         }
     }
 
-    pub fn exec(self, regs: &mut [u16; N_REGS], mem: &mut [u16; MEMORY_MAX]) -> bool {
+    pub fn exec(self, regs: &mut [u16; N_REGS], mem: &mut Memory) -> bool {
         match self {
             Trap::GETC => {
                 let mut buf = [0u8];
@@ -37,7 +37,7 @@ impl Trap {
             }
             Trap::PUTS => {
                 let mut i = regs[R_P0] as usize;
-                while let c = mem[i]
+                while let c = mem.get(i)
                     && c != 0x00
                 {
                     let _ = stdout().write(&[c as u8]);
@@ -55,7 +55,7 @@ impl Trap {
             }
             Trap::PUTSP => {
                 let mut i = regs[R_P0] as usize;
-                while let c = mem[i]
+                while let c = mem.get(i)
                     && c != 0x0000
                 {
                     let _ = stdout().write(&[c as u8]);
@@ -78,7 +78,7 @@ impl Trap {
 
 #[cfg(test)]
 mod tests {
-    use crate::{MEMORY_MAX, N_REGS, instructions::Instruction, traps::Trap};
+    use crate::{N_REGS, instructions::Instruction, memory::Memory, traps::Trap};
     use gag::BufferRedirect;
     use std::io::Read;
 
@@ -96,10 +96,10 @@ mod tests {
         // intercept stdout
         let mut buf = BufferRedirect::stdout().unwrap();
         let mut regs = [0u16; N_REGS];
-        let mut mem = [0u16; MEMORY_MAX];
+        let mut mem = Memory::new();
         regs[0] = 100;
         for (i, c) in "hola".bytes().enumerate() {
-            mem[100 + i] = c as u16;
+            mem.set(100 + i, c as u16);
         }
         instruction.eval(&mut regs, &mut mem);
 
@@ -122,7 +122,7 @@ mod tests {
         // intercept stdout
         let mut buf = BufferRedirect::stdout().unwrap();
         let mut regs = [0u16; N_REGS];
-        let mut mem = [0u16; MEMORY_MAX];
+        let mut mem = Memory::new();
         regs[0] = 'X' as u16;
         instruction.eval(&mut regs, &mut mem);
 
@@ -145,15 +145,16 @@ mod tests {
         // intercept stdout
         let mut buf = BufferRedirect::stdout().unwrap();
         let mut regs = [0u16; N_REGS];
-        let mut mem = [0u16; MEMORY_MAX];
+        let mut mem = Memory::new();
         regs[0] = 100;
         let mut iter = "holaa".bytes();
         let mut i = 0;
         while let Some(c) = iter.next() {
-            mem[100 + i] = c as u16;
+            let mut value = c as u16;
             if let Some(c) = iter.next() {
-                mem[100 + i] |= (c as u16) << 8;
+                value |= (c as u16) << 8;
             }
+            mem.set(100 + i, value);
             i = i + 1
         }
         instruction.eval(&mut regs, &mut mem);

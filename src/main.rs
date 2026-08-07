@@ -1,12 +1,15 @@
-use crate::instructions::Instruction;
+use crate::{
+    instructions::Instruction,
+    memory::{MEMORY_MAX, Memory},
+};
 
 mod image;
 mod instructions;
 mod instructions_tests;
+mod memory;
 mod traps;
 
 // Constants
-const MEMORY_MAX: usize = 1 << 16;
 const N_REGS: usize = 10;
 const PC_START: u16 = 0x3000;
 
@@ -35,7 +38,7 @@ fn main() -> Result<(), i32> {
     }
 
     let mut regs: [u16; N_REGS] = [0; N_REGS];
-    let mut mem: [u16; MEMORY_MAX] = [0; MEMORY_MAX];
+    let mut mem: Memory = Memory::new();
 
     for arg in &args[1..] {
         if let Err(e) = image::load_image_file(arg, &mut mem) {
@@ -50,11 +53,13 @@ fn main() -> Result<(), i32> {
     /* 0x3000 is the default */
     regs[R_PC] = PC_START;
 
+    // crossterm to poll keyboard events
+    crossterm::terminal::enable_raw_mode().map_err(|_| 2)?;
     loop {
         /* FETCH */
 
         // construct instruction from memory at PC
-        let instr = Instruction::from(mem[regs[R_PC] as usize]);
+        let instr = Instruction::from(mem.get(regs[R_PC] as usize));
         // then evaluate the instruction, passing in the registers and memory
         if !instr.eval(&mut regs, &mut mem) {
             break;
@@ -64,6 +69,7 @@ fn main() -> Result<(), i32> {
 
         regs[R_PC] = regs[R_PC].wrapping_add(1);
     }
+    crossterm::terminal::disable_raw_mode().map_err(|_| 2)?;
 
     Ok(())
 }
