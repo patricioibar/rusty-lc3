@@ -8,8 +8,8 @@ pub enum Instruction {
     ST,                                           // store
     JSR,                                          // jump to subroutine pc offset
     JSRr,                                         // jump to subroutine register
-    ANDReg,                                       // and register
-    ANDImm,                                       // and immediate
+    ANDReg { dr: usize, sr1: usize, sr2: usize }, // and register
+    ANDImm { dr: usize, sr1: usize, imm: u16 },   // and immediate
     LDR,                                          // load register
     STR,                                          // store register
     RTI,                                          // unused
@@ -63,8 +63,14 @@ impl Instruction {
             Instruction::ST => todo!(),
             Instruction::JSR => todo!(),
             Instruction::JSRr => todo!(),
-            Instruction::ANDReg => todo!(),
-            Instruction::ANDImm => todo!(),
+            Instruction::ANDReg { dr, sr1, sr2 } => {
+                regs[dr] = regs[sr1] & regs[sr2];
+                Self::update_flags(regs, dr);
+            }
+            Instruction::ANDImm { dr, sr1, imm } => {
+                regs[dr] = regs[sr1] & imm;
+                Self::update_flags(regs, dr);
+            }
             Instruction::LDR => todo!(),
             Instruction::STR => todo!(),
             Instruction::RTI => todo!(),
@@ -89,10 +95,7 @@ impl Instruction {
         let is_imm = body & 0b0000_0000_0010_0000 != 0;
         if is_imm {
             // extend sign bit for immediate value
-            let mut imm = body & 0b0000_0000_0001_1111;
-            if imm & 0b0000_0000_0001_0000 != 0 {
-                imm = imm | 0b1111_1111_1110_0000;
-            }
+            let imm = Self::sign_extend(body & 0b0000_0000_0001_1111, 5);
             Self::ADDImm { dr, sr1, imm }
         } else {
             let sr2 = (body & 0b0000_0000_0000_0111) as usize;
@@ -113,7 +116,17 @@ impl Instruction {
     }
 
     fn build_and(body: u16) -> Instruction {
-        todo!()
+        let dr = (body & 0b0000_1110_0000_0000 >> 9) as usize;
+        let sr1 = (body & 0b0000_0001_1100_0000 >> 6) as usize;
+        let is_imm = body & 0b0000_0000_0010_0000 != 0;
+        if is_imm {
+            // extend sign bit for immediate value
+            let imm = Self::sign_extend(body & 0b0000_0000_0001_1111, 5);
+            Self::ANDImm { dr, sr1, imm }
+        } else {
+            let sr2 = (body & 0b0000_0000_0000_0111) as usize;
+            Self::ANDReg { dr, sr1, sr2 }
+        }
     }
 
     fn build_ldr(body: u16) -> Instruction {
@@ -163,6 +176,14 @@ impl Instruction {
             regs[R_COND] = FL_NEG;
         } else {
             regs[R_COND] = FL_POS;
+        }
+    }
+
+    fn sign_extend(value: u16, bit_count: u16) -> u16 {
+        if (value >> (bit_count - 1)) & 1 == 1 {
+            value | (0xFFFF << bit_count)
+        } else {
+            value
         }
     }
 }
