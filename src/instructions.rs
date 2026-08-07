@@ -5,7 +5,7 @@ pub enum Instruction {
     ADDReg { dr: usize, sr1: usize, sr2: usize }, // add register
     ADDImm { dr: usize, sr1: usize, imm: u16 },   // add immediate
     LD { dr: usize, offset: u16 },                // load
-    ST,                                           // store
+    ST { sr: usize, offset: u16 },                // store
     JSR { offset: u16 },                          // jump to subroutine pc offset
     JSRr { base: usize },                         // jump to subroutine register
     ANDReg { dr: usize, sr1: usize, sr2: usize }, // and register
@@ -69,7 +69,9 @@ impl Instruction {
                 regs[dr] = mem[regs[R_PC].wrapping_add(offset) as usize];
                 Self::update_flags(regs, dr);
             }
-            Instruction::ST => todo!(),
+            Instruction::ST { sr, offset } => {
+                mem[regs[R_PC].wrapping_add(offset) as usize] = regs[sr]
+            }
             Instruction::JSR { offset } => {
                 regs[R_P7] = regs[R_PC];
                 regs[R_PC] = regs[R_PC].wrapping_add(offset);
@@ -141,7 +143,9 @@ impl Instruction {
     }
 
     fn build_st(body: u16) -> Instruction {
-        todo!()
+        let sr = ((body & 0b0000_1110_0000_0000) >> 9) as usize;
+        let offset = Self::sign_extend(body & 0b0000_0001_1111_1111, 9);
+        Self::ST { sr, offset }
     }
 
     fn build_jsr(body: u16) -> Instruction {
