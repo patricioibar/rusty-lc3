@@ -16,8 +16,7 @@ pub enum Instruction {
     NOT,                                          // bitwise not
     LDI,                                          // load indirect
     STI,                                          // store indirect
-    JMP,                                          // jump
-    RET,                                          // return
+    JMP { base: usize },                          // jump
     RES,                                          // reserved (unused)
     LEA,                                          // load effective address
     TRAP,                                         // execute trap
@@ -84,9 +83,8 @@ impl Instruction {
             Instruction::NOT => todo!(),
             Instruction::LDI => todo!(),
             Instruction::STI => todo!(),
-            Instruction::JMP => todo!(),
-            Instruction::RET => return, // unused, noop
-            Instruction::RES => todo!(),
+            Instruction::JMP { base } => regs[R_PC] = regs[base],
+            Instruction::RES => return, // unused, noop
             Instruction::LEA => todo!(),
             Instruction::TRAP => todo!(),
         }
@@ -165,7 +163,8 @@ impl Instruction {
     }
 
     fn build_jmp(body: u16) -> Instruction {
-        todo!()
+        let base = ((body & 0b0000_000_111_000000) >> 6) as usize;
+        Self::JMP { base }
     }
 
     fn build_res(body: u16) -> Instruction {
@@ -313,5 +312,23 @@ mod tests {
         instruction.eval(&mut regs, &mut mem);
         assert_eq!(regs[1], 0xF0F0 & 0x000F);
         assert!(regs[R_COND] & FL_ZRO != 0);
+    }
+
+    #[test]
+    fn test_jmp() {
+        // opcode: 1100, base: 010
+        let op_body = 0b1100_000_110_000000;
+        let instruction = Instruction::from(op_body);
+        match instruction {
+            Instruction::JMP { base } => {
+                assert_eq!(base, 6);
+            }
+            _ => panic!("Expected JMP instruction"),
+        }
+        let mut regs = [0u16; N_REGS];
+        let mut mem = [0u16; MEMORY_MAX];
+        regs[6] = 1234;
+        instruction.eval(&mut regs, &mut mem);
+        assert_eq!(regs[R_PC], 1234);
     }
 }
