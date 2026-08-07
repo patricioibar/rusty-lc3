@@ -1,4 +1,4 @@
-use crate::{FL_NEG, FL_POS, FL_ZRO, MEMORY_MAX, N_REGS, R_COND, R_PC};
+use crate::{FL_NEG, FL_POS, FL_ZRO, MEMORY_MAX, N_REGS, R_COND, R_P7, R_PC};
 
 pub enum Instruction {
     BR { offset: u16, n: u16, z: u16, p: u16 },   // branch
@@ -6,8 +6,8 @@ pub enum Instruction {
     ADDImm { dr: usize, sr1: usize, imm: u16 },   // add immediate
     LD,                                           // load
     ST,                                           // store
-    JSR,                                          // jump to subroutine pc offset
-    JSRr,                                         // jump to subroutine register
+    JSR { offset: u16 },                          // jump to subroutine pc offset
+    JSRr { base: usize },                         // jump to subroutine register
     ANDReg { dr: usize, sr1: usize, sr2: usize }, // and register
     ANDImm { dr: usize, sr1: usize, imm: u16 },   // and immediate
     LDR,                                          // load register
@@ -67,8 +67,14 @@ impl Instruction {
             }
             Instruction::LD => todo!(),
             Instruction::ST => todo!(),
-            Instruction::JSR => todo!(),
-            Instruction::JSRr => todo!(),
+            Instruction::JSR { offset } => {
+                regs[R_P7] = regs[R_PC];
+                regs[R_PC] = regs[R_PC].wrapping_add(offset);
+            }
+            Instruction::JSRr { base } => {
+                regs[R_P7] = regs[R_PC];
+                regs[R_PC] = regs[base];
+            }
             Instruction::ANDReg { dr, sr1, sr2 } => {
                 regs[dr] = regs[sr1] & regs[sr2];
                 Self::update_flags(regs, dr);
@@ -121,7 +127,14 @@ impl Instruction {
     }
 
     fn build_jsr(body: u16) -> Instruction {
-        todo!()
+        let is_reg = (body & 0b0000_1_00000000000) == 0;
+        if is_reg {
+            let base = ((body & 0b0000_000_111_000000) >> 6) as usize;
+            Self::JSRr { base }
+        } else {
+            let offset = Self::sign_extend(body & 0b0000_0_111_1111_1111, 11);
+            Self::JSR { offset }
+        }
     }
 
     fn build_and(body: u16) -> Instruction {
@@ -330,5 +343,44 @@ mod tests {
         regs[6] = 1234;
         instruction.eval(&mut regs, &mut mem);
         assert_eq!(regs[R_PC], 1234);
+    }
+
+    #[test]
+    fn test_jump_subroutine() {
+        // opcode: 0100, offset flag: 1, offset: 00000001011
+        let op_body = 0b0100_1_00000001011;
+        let instruction = Instruction::from(op_body);
+        match instruction {
+            Instruction::JSR { offset } => {
+                assert_eq!(offset, 11);
+            }
+            _ => panic!("Expected JSR instruction"),
+        }
+        let mut regs = [0u16; N_REGS];
+        let mut mem = [0u16; MEMORY_MAX];
+        regs[R_PC] = 1200;
+        instruction.eval(&mut regs, &mut mem);
+        assert_eq!(regs[R_PC], 1211);
+        assert_eq!(regs[R_P7], 1200);
+    }
+
+    #[test]
+    fn test_jump_subroutine_register() {
+        // opcode: 0100, offset flag: 0, empty: 00, register: 011, empty: 000000
+        let op_body = 0b0100_0_00_011_000000;
+        let instruction = Instruction::from(op_body);
+        match instruction {
+            Instruction::JSRr { base } => {
+                assert_eq!(base, 3);
+            }
+            _ => panic!("Expected JSRr instruction"),
+        }
+        let mut regs = [0u16; N_REGS];
+        let mut mem = [0u16; MEMORY_MAX];
+        regs[R_PC] = 8900;
+        regs[3] = 67;
+        instruction.eval(&mut regs, &mut mem);
+        assert_eq!(regs[R_PC], 67);
+        assert_eq!(regs[R_P7], 8900);
     }
 }
