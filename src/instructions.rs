@@ -1,4 +1,4 @@
-use crate::{FL_NEG, FL_POS, FL_ZRO, MEMORY_MAX, N_REGS, R_COND, R_P7, R_PC};
+use crate::{FL_NEG, FL_POS, FL_ZRO, MEMORY_MAX, N_REGS, R_COND, R_P7, R_PC, traps::Trap};
 
 pub enum Instruction {
     BR { offset: u16, n: u16, z: u16, p: u16 },   // branch
@@ -19,7 +19,7 @@ pub enum Instruction {
     JMP { base: usize },                          // jump
     RES,                                          // reserved (unused)
     LEA { dr: usize, offset: u16 },               // load effective address
-    TRAP,                                         // execute trap
+    TRAP { trap: Trap },                          // execute trap
 }
 
 impl Instruction {
@@ -115,7 +115,7 @@ impl Instruction {
                 regs[dr] = regs[R_PC].wrapping_add(offset);
                 Self::update_flags(regs, dr);
             }
-            Instruction::TRAP => todo!(),
+            Instruction::TRAP { trap } => trap.exec(regs, mem),
         }
     }
 
@@ -222,7 +222,8 @@ impl Instruction {
     }
 
     fn build_trap(body: u16) -> Instruction {
-        todo!()
+        let trap = Trap::from(body as u8);
+        Self::TRAP { trap }
     }
 
     fn update_flags(regs: &mut [u16; N_REGS], dr: usize) {
