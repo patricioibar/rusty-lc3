@@ -1,10 +1,10 @@
-use crate::{FL_NEG, FL_POS, FL_ZRO, MEMORY_MAX, N_REGS, R_COND, R_P7, R_PC};
+use crate::{FL_NEG, FL_POS, FL_ZRO, MEMORY_MAX, N_REGS, PC_START, R_COND, R_P7, R_PC};
 
 pub enum Instruction {
     BR { offset: u16, n: u16, z: u16, p: u16 },   // branch
     ADDReg { dr: usize, sr1: usize, sr2: usize }, // add register
     ADDImm { dr: usize, sr1: usize, imm: u16 },   // add immediate
-    LD,                                           // load
+    LD { dr: usize, offset: u16 },                // load
     ST,                                           // store
     JSR { offset: u16 },                          // jump to subroutine pc offset
     JSRr { base: usize },                         // jump to subroutine register
@@ -65,7 +65,10 @@ impl Instruction {
                 regs[dr] = regs[sr1].wrapping_add(imm as u16);
                 Self::update_flags(regs, dr);
             }
-            Instruction::LD => todo!(),
+            Instruction::LD { dr, offset } => {
+                regs[dr] = mem[regs[R_PC].wrapping_add(offset) as usize];
+                Self::update_flags(regs, dr);
+            }
             Instruction::ST => todo!(),
             Instruction::JSR { offset } => {
                 regs[R_P7] = regs[R_PC];
@@ -119,7 +122,9 @@ impl Instruction {
     }
 
     fn build_ld(body: u16) -> Instruction {
-        todo!()
+        let dr = ((body & 0b0000_1110_0000_0000) >> 9) as usize;
+        let offset = Self::sign_extend(body & 0b0000_0001_1111_1111, 9);
+        Self::LD { dr, offset }
     }
 
     fn build_st(body: u16) -> Instruction {
@@ -382,5 +387,27 @@ mod tests {
         instruction.eval(&mut regs, &mut mem);
         assert_eq!(regs[R_PC], 67);
         assert_eq!(regs[R_P7], 8900);
+    }
+
+    #[test]
+    fn test_load() {
+        // opcode: 0010, dr: 100, offset: 001001000
+        let op_body = 0b0010_100_001001000;
+        let instruction = Instruction::from(op_body);
+        match instruction {
+            Instruction::LD { dr, offset } => {
+                assert_eq!(dr, 4);
+                assert_eq!(offset, 72);
+            }
+            _ => panic!("Expected LD instruction"),
+        }
+        let mut regs = [0u16; N_REGS];
+        let mut mem = [0u16; MEMORY_MAX];
+        regs[R_PC] = 3000;
+        regs[4] = 123;
+        mem[3072] = 1100;
+        instruction.eval(&mut regs, &mut mem);
+        assert_eq!(regs[4], 1100);
+        assert!(regs[R_COND] & FL_POS != 0);
     }
 }
