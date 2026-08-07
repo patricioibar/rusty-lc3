@@ -303,7 +303,7 @@ mod tests {
 
     #[test]
     fn test_store() {
-        // opcode: 0011, dr: 100, offset: 001001000
+        // opcode: 0011, sr: 100, offset: 001001000
         let op_body = 0b0011_100_001001000;
         let instruction = Instruction::from(op_body);
         match instruction {
@@ -323,7 +323,7 @@ mod tests {
 
     #[test]
     fn test_store_indirect() {
-        // opcode: 1011, dr: 100, offset: 001001000
+        // opcode: 1011, sr: 100, offset: 001001000
         let op_body = 0b1011_100_001001000;
         let instruction = Instruction::from(op_body);
         match instruction {
@@ -340,5 +340,27 @@ mod tests {
         regs[4] = 10;
         instruction.eval(&mut regs, &mut mem);
         assert_eq!(mem[67], 10);
+    }
+
+    #[test]
+    fn test_store_register() {
+        // opcode: 0111, sr: 000, base: 001, offset: 011011
+        let op_body = 0b0111_000_001_011011;
+        let instruction = Instruction::from(op_body);
+        match instruction {
+            Instruction::STR { sr, base, offset } => {
+                assert_eq!(sr, 0);
+                assert_eq!(base, 1);
+                assert_eq!(offset, 27);
+            }
+            _ => panic!("Expected STR instruction"),
+        }
+        let mut regs = [0u16; N_REGS];
+        let mut mem = [0u16; MEMORY_MAX];
+        regs[0] = 100;
+        regs[1] = 123;
+        mem[1230] = 0xABCD;
+        instruction.eval(&mut regs, &mut mem);
+        assert_eq!(regs[0], 100);
     }
 }

@@ -11,7 +11,7 @@ pub enum Instruction {
     ANDReg { dr: usize, sr1: usize, sr2: usize }, // and register
     ANDImm { dr: usize, sr1: usize, imm: u16 },   // and immediate
     LDR { dr: usize, base: usize, offset: u16 },  // load register
-    STR,                                          // store register
+    STR { sr: usize, base: usize, offset: u16 },  // store register
     RTI,                                          // unused
     NOT { dr: usize, sr: usize },                 // bitwise not
     LDI { dr: usize, offset: u16 },               // load indirect
@@ -92,7 +92,9 @@ impl Instruction {
                 regs[dr] = mem[regs[base].wrapping_add(offset) as usize];
                 Self::update_flags(regs, dr);
             }
-            Instruction::STR => todo!(),
+            Instruction::STR { sr, base, offset } => {
+                mem[regs[base].wrapping_add(offset) as usize] = regs[sr];
+            }
             Instruction::RTI => return, // unused, noop
             Instruction::NOT { dr, sr } => {
                 regs[dr] = !regs[sr];
@@ -184,7 +186,10 @@ impl Instruction {
     }
 
     fn build_str(body: u16) -> Instruction {
-        todo!()
+        let sr = ((body & 0b0000_1110_0000_0000) >> 9) as usize;
+        let base = ((body & 0b0000_0001_1100_0000) >> 6) as usize;
+        let offset = Self::sign_extend(body & 0b0000_0000_0011_1111, 6);
+        Self::STR { sr, base, offset }
     }
 
     fn build_not(body: u16) -> Instruction {
