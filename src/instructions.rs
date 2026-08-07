@@ -18,7 +18,7 @@ pub enum Instruction {
     STI,                                          // store indirect
     JMP { base: usize },                          // jump
     RES,                                          // reserved (unused)
-    LEA,                                          // load effective address
+    LEA { dr: usize, offset: u16 },               // load effective address
     TRAP,                                         // execute trap
 }
 
@@ -101,7 +101,10 @@ impl Instruction {
             Instruction::STI => todo!(),
             Instruction::JMP { base } => regs[R_PC] = regs[base],
             Instruction::RES => return, // unused, noop
-            Instruction::LEA => todo!(),
+            Instruction::LEA { dr, offset } => {
+                regs[dr] = regs[R_PC].wrapping_add(offset);
+                Self::update_flags(regs, dr);
+            }
             Instruction::TRAP => todo!(),
         }
     }
@@ -202,7 +205,9 @@ impl Instruction {
     }
 
     fn build_lea(body: u16) -> Instruction {
-        todo!()
+        let dr = ((body & 0b0000_1110_0000_0000) >> 9) as usize;
+        let offset = Self::sign_extend(body & 0b0000_0001_1111_1111, 9);
+        Self::LEA { dr, offset }
     }
 
     fn build_trap(body: u16) -> Instruction {

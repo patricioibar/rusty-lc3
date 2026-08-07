@@ -237,4 +237,25 @@ mod tests {
         assert_eq!(regs[0], 0xABCD);
         assert!(regs[R_COND] == FL_NEG);
     }
+
+    #[test]
+    fn test_load_effective_address() {
+        // opcode: 1110, dr: 100, offset: 001001000
+        let op_body = 0b1110_100_001001000;
+        let instruction = Instruction::from(op_body);
+        match instruction {
+            Instruction::LEA { dr, offset } => {
+                assert_eq!(dr, 4);
+                assert_eq!(offset, 72);
+            }
+            _ => panic!("Expected LEA instruction"),
+        }
+        let mut regs = [0u16; N_REGS];
+        let mut mem = [0u16; MEMORY_MAX];
+        regs[R_PC] = 3000;
+        regs[4] = 123;
+        instruction.eval(&mut regs, &mut mem);
+        assert_eq!(regs[4], 3072);
+        assert!(regs[R_COND] == FL_POS);
+    }
 }
