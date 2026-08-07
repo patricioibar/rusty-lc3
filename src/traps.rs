@@ -1,4 +1,4 @@
-use std::io::{Read, Write, stdout};
+use std::io::{Read, Write, stdin, stdout};
 
 use crate::{MEMORY_MAX, N_REGS, R_P0};
 
@@ -28,7 +28,7 @@ impl Trap {
         match self {
             Trap::GETC => {
                 let mut buf = [0u8];
-                let _ = std::io::stdin().read_exact(&mut buf);
+                let _ = stdin().read_exact(&mut buf);
                 regs[R_P0] = buf[0] as u16;
             }
             Trap::OUT => {
@@ -45,8 +45,27 @@ impl Trap {
                 }
                 let _ = stdout().flush();
             }
-            Trap::IN => todo!(),
-            Trap::PUTSP => todo!(),
+            Trap::IN => {
+                let mut buf = [0u8];
+                print!("Enter a character: ");
+                let _ = stdin().read_exact(&mut buf);
+                regs[R_P0] = buf[0] as u16;
+                let _ = stdout().write(&buf);
+                let _ = stdout().flush();
+            }
+            Trap::PUTSP => {
+                let mut i = regs[R_P0] as usize;
+                while let c = mem[i]
+                    && c != 0x0000
+                {
+                    let _ = stdout().write(&[c as u8]);
+                    if ((c >> 8) as u8) != 0x00 {
+                        let _ = stdout().write(&[(c >> 8) as u8]);
+                    }
+                    i = i + 1;
+                }
+                let _ = stdout().flush();
+            }
             Trap::HALT => todo!(),
         }
     }
@@ -103,5 +122,36 @@ mod tests {
         let mut output = String::new();
         buf.read_to_string(&mut output).unwrap();
         assert_eq!(&output, "X");
+    }
+
+    #[test]
+    fn test_putsp() {
+        // opcode: 1111, empty: 000, trapvect: 00100100
+        let op_body = 0b1111_0000_00100100;
+        let instruction = Instruction::from(op_body);
+        assert!(matches!(
+            &instruction,
+            Instruction::TRAP { trap: Trap::PUTSP }
+        ));
+
+        // intercept stdout
+        let mut buf = BufferRedirect::stdout().unwrap();
+        let mut regs = [0u16; N_REGS];
+        let mut mem = [0u16; MEMORY_MAX];
+        regs[0] = 100;
+        let mut iter = "holaa".bytes();
+        let mut i = 0;
+        while let Some(c) = iter.next() {
+            mem[100 + i] = c as u16;
+            if let Some(c) = iter.next() {
+                mem[100 + i] |= (c as u16) << 8;
+            }
+            i = i + 1
+        }
+        instruction.eval(&mut regs, &mut mem);
+
+        let mut output = String::new();
+        buf.read_to_string(&mut output).unwrap();
+        assert_eq!(&output, "holaa");
     }
 }
