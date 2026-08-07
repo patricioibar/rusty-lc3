@@ -47,7 +47,7 @@ impl Instruction {
         }
     }
 
-    pub fn eval(self, regs: &mut [u16; N_REGS], mem: &mut [u16; MEMORY_MAX]) {
+    pub fn eval(self, regs: &mut [u16; N_REGS], mem: &mut [u16; MEMORY_MAX]) -> bool {
         match self {
             Instruction::BR { offset, n, z, p } => {
                 if (n & regs[R_COND] == FL_NEG)
@@ -95,7 +95,7 @@ impl Instruction {
             Instruction::STR { sr, base, offset } => {
                 mem[regs[base].wrapping_add(offset) as usize] = regs[sr];
             }
-            Instruction::RTI => return, // unused, noop
+            Instruction::RTI => {} // unused, noop
             Instruction::NOT { dr, sr } => {
                 regs[dr] = !regs[sr];
                 Self::update_flags(regs, dr);
@@ -110,13 +110,14 @@ impl Instruction {
                 mem[addr as usize] = regs[sr];
             }
             Instruction::JMP { base } => regs[R_PC] = regs[base],
-            Instruction::RES => return, // unused, noop
+            Instruction::RES => {} // unused, noop
             Instruction::LEA { dr, offset } => {
                 regs[dr] = regs[R_PC].wrapping_add(offset);
                 Self::update_flags(regs, dr);
             }
-            Instruction::TRAP { trap } => trap.exec(regs, mem),
-        }
+            Instruction::TRAP { trap } => return trap.exec(regs, mem),
+        };
+        true
     }
 
     fn build_br(body: u16) -> Instruction {
