@@ -1,7 +1,7 @@
-use crate::{FL_NEG, FL_POS, FL_ZRO, MEMORY_MAX, N_REGS, R_COND};
+use crate::{FL_NEG, FL_POS, FL_ZRO, MEMORY_MAX, N_REGS, R_COND, R_PC};
 
 pub enum Instruction {
-    BR,                                           // branch
+    BR { offset: u16, n: u16, z: u16, p: u16 },   // branch
     ADDReg { dr: usize, sr1: usize, sr2: usize }, // add register
     ADDImm { dr: usize, sr1: usize, imm: u16 },   // add immediate
     LD,                                           // load
@@ -50,7 +50,14 @@ impl Instruction {
 
     pub fn eval(self, regs: &mut [u16; N_REGS], mem: &mut [u16; MEMORY_MAX]) {
         match self {
-            Instruction::BR => todo!(),
+            Instruction::BR { offset, n, z, p } => {
+                if (n & regs[R_COND] == FL_NEG)
+                    || (z & regs[R_COND] == FL_ZRO)
+                    || (p & regs[R_COND] == FL_POS)
+                {
+                    regs[R_PC] = regs[R_PC].wrapping_add(offset);
+                }
+            }
             Instruction::ADDReg { dr, sr1, sr2 } => {
                 regs[dr] = regs[sr1].wrapping_add(regs[sr2]);
                 Self::update_flags(regs, dr);
@@ -86,7 +93,11 @@ impl Instruction {
     }
 
     fn build_br(body: u16) -> Instruction {
-        todo!()
+        let offset = Self::sign_extend(body & 0b0000_0001_1111_1111, 9);
+        let n = Self::bool_extend((body & 0b0000_1000_0000_0000) != 0);
+        let z = Self::bool_extend((body & 0b0000_0100_0000_0000) != 0);
+        let p = Self::bool_extend((body & 0b0000_0010_0000_0000) != 0);
+        Self::BR { offset, n, z, p }
     }
 
     fn build_add(body: u16) -> Instruction {
@@ -185,5 +196,9 @@ impl Instruction {
         } else {
             value
         }
+    }
+
+    fn bool_extend(value: bool) -> u16 {
+        if value { 0xFFFF } else { 0x0000 }
     }
 }
