@@ -13,9 +13,9 @@ mod tests {
         match instruction {
             Instruction::BR { offset, n, z, p } => {
                 assert_eq!(offset, 1);
-                assert_eq!(n, 0xFFFF);
-                assert_eq!(z, 0x0000);
-                assert_eq!(p, 0xFFFF);
+                assert_eq!(n, true);
+                assert_eq!(z, false);
+                assert_eq!(p, true);
             }
             _ => panic!("Expected BR instruction"),
         }
@@ -25,6 +25,38 @@ mod tests {
         regs[R_COND] = FL_NEG; // Set condition to negative
         instruction.eval(&mut regs, &mut mem);
         assert_eq!(regs[R_PC], 101); // PC should increment by offset
+    }
+
+    #[test]
+    fn test_branch_zero_positive() {
+        // opcode: 0000, n: 0, z: 1, p: 1, offset: 000000010
+        let op_body = 0b0000_011_000000010;
+        let instruction = Instruction::from(op_body);
+        match instruction {
+            Instruction::BR { offset, n, z, p } => {
+                assert_eq!(offset, 2);
+                assert_eq!(n, false);
+                assert_eq!(z, true);
+                assert_eq!(p, true);
+            }
+            _ => panic!("Expected BR instruction"),
+        }
+        let mut regs = [0u16; N_REGS];
+        let mut mem = Memory::new();
+        regs[R_PC] = 200;
+        regs[R_COND] = FL_ZRO;
+        instruction.clone().eval(&mut regs, &mut mem);
+        assert_eq!(regs[R_PC], 202);
+
+        regs[R_PC] = 200;
+        regs[R_COND] = FL_POS;
+        instruction.clone().eval(&mut regs, &mut mem);
+        assert_eq!(regs[R_PC], 202);
+
+        regs[R_PC] = 200;
+        regs[R_COND] = FL_NEG;
+        instruction.eval(&mut regs, &mut mem);
+        assert_eq!(regs[R_PC], 200);
     }
 
     #[test]

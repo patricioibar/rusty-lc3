@@ -1,4 +1,7 @@
-use crate::{instructions::Instruction, memory::Memory};
+use crate::{
+    instructions::{Instruction, ProgramState},
+    memory::Memory,
+};
 
 mod image;
 mod instructions;
@@ -58,7 +61,7 @@ fn main() -> Result<(), i32> {
         // construct instruction from memory at PC
         let instr = Instruction::from(mem.get(regs[R_PC] as usize));
         // then evaluate the instruction, passing in the registers and memory
-        if !instr.eval(&mut regs, &mut mem) {
+        if instr.eval(&mut regs, &mut mem) == ProgramState::Halted {
             break;
         }
         // this two steps could be combined into one

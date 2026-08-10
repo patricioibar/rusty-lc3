@@ -1,25 +1,34 @@
 use crate::{FL_NEG, FL_POS, FL_ZRO, N_REGS, R_COND, R_P7, R_PC, memory::Memory, traps::Trap};
 
+#[derive(Debug, PartialEq, Eq, Clone)]
+#[allow(clippy::upper_case_acronyms)]
+#[rustfmt::skip]
 pub enum Instruction {
-    BR { offset: u16, n: u16, z: u16, p: u16 },   // branch
-    ADDReg { dr: usize, sr1: usize, sr2: usize }, // add register
-    ADDImm { dr: usize, sr1: usize, imm: u16 },   // add immediate
-    LD { dr: usize, offset: u16 },                // load
-    ST { sr: usize, offset: u16 },                // store
-    JSR { offset: u16 },                          // jump to subroutine pc offset
-    JSRr { base: usize },                         // jump to subroutine register
-    ANDReg { dr: usize, sr1: usize, sr2: usize }, // and register
-    ANDImm { dr: usize, sr1: usize, imm: u16 },   // and immediate
-    LDR { dr: usize, base: usize, offset: u16 },  // load register
-    STR { sr: usize, base: usize, offset: u16 },  // store register
-    RTI,                                          // unused
-    NOT { dr: usize, sr: usize },                 // bitwise not
-    LDI { dr: usize, offset: u16 },               // load indirect
-    STI { sr: usize, offset: u16 },               // store indirect
-    JMP { base: usize },                          // jump
-    RES,                                          // reserved (unused)
-    LEA { dr: usize, offset: u16 },               // load effective address
-    TRAP { trap: Trap },                          // execute trap
+    BR { offset: u16, n: bool, z: bool, p: bool },   // branch
+    ADDReg { dr: usize, sr1: usize, sr2: usize },    // add register
+    ADDImm { dr: usize, sr1: usize, imm: u16 },      // add immediate
+    LD { dr: usize, offset: u16 },                   // load
+    ST { sr: usize, offset: u16 },                   // store
+    JSR { offset: u16 },                             // jump to subroutine pc offset
+    JSRr { base: usize },                            // jump to subroutine register
+    ANDReg { dr: usize, sr1: usize, sr2: usize },    // and register
+    ANDImm { dr: usize, sr1: usize, imm: u16 },      // and immediate
+    LDR { dr: usize, base: usize, offset: u16 },     // load register
+    STR { sr: usize, base: usize, offset: u16 },     // store register
+    RTI,                                             // unused
+    NOT { dr: usize, sr: usize },                    // bitwise not
+    LDI { dr: usize, offset: u16 },                  // load indirect
+    STI { sr: usize, offset: u16 },                  // store indirect
+    JMP { base: usize },                             // jump
+    RES,                                             // reserved (unused)
+    LEA { dr: usize, offset: u16 },                  // load effective address
+    TRAP { trap: Trap },                             // execute trap
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub enum ProgramState {
+    Running,
+    Halted,
 }
 
 impl Instruction {
@@ -47,12 +56,12 @@ impl Instruction {
         }
     }
 
-    pub fn eval(self, regs: &mut [u16; N_REGS], mem: &mut Memory) -> bool {
+    pub fn eval(self, regs: &mut [u16; N_REGS], mem: &mut Memory) -> ProgramState {
         match self {
             Instruction::BR { offset, n, z, p } => {
-                if (n & regs[R_COND] == FL_NEG)
-                    || (z & regs[R_COND] == FL_ZRO)
-                    || (p & regs[R_COND] == FL_POS)
+                if (n && regs[R_COND] == FL_NEG)
+                    || (z && regs[R_COND] == FL_ZRO)
+                    || (p && regs[R_COND] == FL_POS)
                 {
                     regs[R_PC] = regs[R_PC].wrapping_add(offset);
                 }
@@ -117,14 +126,14 @@ impl Instruction {
             }
             Instruction::TRAP { trap } => return trap.exec(regs, mem),
         };
-        true
+        ProgramState::Running
     }
 
     fn build_br(body: u16) -> Instruction {
         let offset = Self::sign_extend(body & 0b0000_0001_1111_1111, 9);
-        let n = Self::bool_extend((body & 0b0000_1000_0000_0000) != 0);
-        let z = Self::bool_extend((body & 0b0000_0100_0000_0000) != 0);
-        let p = Self::bool_extend((body & 0b0000_0010_0000_0000) != 0);
+        let n = (body & 0b0000_1000_0000_0000) != 0;
+        let z = (body & 0b0000_0100_0000_0000) != 0;
+        let p = (body & 0b0000_0010_0000_0000) != 0;
         Self::BR { offset, n, z, p }
     }
 
@@ -243,9 +252,5 @@ impl Instruction {
         } else {
             value
         }
-    }
-
-    fn bool_extend(value: bool) -> u16 {
-        if value { 0xFFFF } else { 0x0000 }
     }
 }

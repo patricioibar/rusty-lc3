@@ -1,6 +1,6 @@
 use std::{
     fs::File,
-    io::{BufReader, Error, Read},
+    io::{BufReader, Error, ErrorKind, Read},
 };
 
 use crate::memory::Memory;
@@ -15,14 +15,13 @@ fn load_image(mut reader: impl Read, mem: &mut Memory) -> Result<(), Error> {
     reader.read_to_end(&mut buf)?;
     let mut iter = buf.iter();
     let mut addr: usize;
-    if let (Some(first), Some(second)) = (iter.next(), iter.next()) {
-        addr = (((*first as u16) << 8) | *second as u16) as usize;
-    } else {
+    let (Some(first), Some(second)) = (iter.next(), iter.next()) else {
         return Err(Error::new(
-            std::io::ErrorKind::InvalidData,
+            ErrorKind::InvalidData,
             "could not read first two bytes of data",
         ));
-    }
+    };
+    addr = (((*first as u16) << 8) | *second as u16) as usize;
 
     while let Some(byte) = iter.next() {
         let mut value = (*byte as u16) << 8;
@@ -41,13 +40,6 @@ mod tests {
 
     #[test]
     fn test_load_image() -> Result<(), Error> {
-        // first two bytes = where to store the program in memory
-        // data is stored in big endian, so image bytes must be swapped
-        // 0x01 0x02 => 0x0001
-        // 0x02 0x00 => 0x0002
-        // 0xFF 0x00 => 0x00FF
-        // 0x00 0xFF => 0xFF00
-        // 0x12 0x34 => 0x3412
         let image = [0x00, 0x01, 0x02, 0x00, 0xFF, 0x00, 0x00, 0xFF, 0x12, 0x34];
         let mut mem = Memory::new();
         load_image(&image[..], &mut mem)?;

@@ -19,13 +19,14 @@ impl Memory {
 
     pub fn get(&mut self, addr: usize) -> u16 {
         if addr == MR_KBSR {
-            if event::poll(Duration::from_millis(100)).is_ok()
-                && let Ok(Event::Key(key_event)) = event::read()
-            {
-                if key_event.is_press()
-                    && let Some(c) = key_event.code.as_char()
-                {
-                    self.mem[MR_KBSR] = 1 << 15;
+            if let Ok(true) = event::poll(Duration::from_millis(10)) {
+                let char_pressed = if let Ok(Event::Key(key_event)) = event::read() {
+                    key_event.code.as_char()
+                } else {
+                    None
+                };
+                if let Some(c) = char_pressed {
+                    self.mem[MR_KBSR] = 0xFFFF;
                     self.mem[MR_KBDR] = c as u16;
                 }
             } else {
@@ -39,6 +40,7 @@ impl Memory {
         self.mem[addr] = value;
     }
 
+    #[cfg(test)]
     pub fn get_range(&self, range: std::ops::Range<usize>) -> &[u16] {
         &self.mem[range]
     }

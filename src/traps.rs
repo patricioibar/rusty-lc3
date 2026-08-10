@@ -1,7 +1,9 @@
 use std::io::{Read, Write, stdin, stdout};
 
-use crate::{N_REGS, R_P0, memory::Memory};
+use crate::{N_REGS, R_P0, instructions::ProgramState, memory::Memory};
 
+#[derive(Debug, PartialEq, Eq, Clone)]
+#[allow(clippy::upper_case_acronyms)]
 pub enum Trap {
     GETC,  // get character from keyboard, not echoed onto the terminal
     OUT,   // output a character
@@ -20,11 +22,11 @@ impl Trap {
             0x23 => Self::IN,
             0x24 => Self::PUTSP,
             0x25 => Self::HALT,
-            _ => panic!("Invalid trapvect: {}", trapvect),
+            _ => panic!("Invalid trapvect: 0x{:04X}", trapvect),
         }
     }
 
-    pub fn exec(self, regs: &mut [u16; N_REGS], mem: &mut Memory) -> bool {
+    pub fn exec(self, regs: &mut [u16; N_REGS], mem: &mut Memory) -> ProgramState {
         match self {
             Trap::GETC => {
                 let mut buf = [0u8];
@@ -32,7 +34,7 @@ impl Trap {
                 regs[R_P0] = buf[0] as u16;
             }
             Trap::OUT => {
-                let _ = stdout().write(&[regs[R_P0] as u8]);
+                let _ = write!(stdout(), "{}", regs[R_P0] as u8 as char);
                 let _ = stdout().flush();
             }
             Trap::PUTS => {
@@ -47,7 +49,7 @@ impl Trap {
             }
             Trap::IN => {
                 let mut buf = [0u8];
-                print!("Enter a character: ");
+                let _ = write!(&mut stdout(), "Enter a character: ");
                 let _ = stdin().read_exact(&mut buf);
                 regs[R_P0] = buf[0] as u16;
                 let _ = stdout().write(&buf);
@@ -67,12 +69,12 @@ impl Trap {
                 let _ = stdout().flush();
             }
             Trap::HALT => {
-                print!("HALT");
+                let _ = writeln!(stdout(), "HALT");
                 let _ = stdout().flush();
-                return false;
+                return ProgramState::Halted;
             }
         }
-        true
+        ProgramState::Running
     }
 }
 
