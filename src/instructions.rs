@@ -129,6 +129,10 @@ impl Instruction {
         ProgramState::Running
     }
 
+    // constructor functions
+    // I use masks to extract relevan bits instead of shifting and masking,
+    // because I find it more readable and intuitive
+
     fn build_br(body: u16) -> Instruction {
         let offset = Self::sign_extend(body & 0b0000_0001_1111_1111, 9);
         let n = (body & 0b0000_1000_0000_0000) != 0;

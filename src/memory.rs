@@ -18,6 +18,7 @@ impl Memory {
     }
 
     pub fn get(&mut self, addr: usize) -> u16 {
+        // poll mechanism for keyboard input
         if addr == MR_KBSR {
             if let Ok(true) = event::poll(Duration::from_millis(10)) {
                 let char_pressed = if let Ok(Event::Key(key_event)) = event::read() {

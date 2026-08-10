@@ -87,6 +87,7 @@ impl Trap {
 
 fn write_char(ch: u8) {
     if ch == b'\n' {
+        // necessary to correctly print newlines with terminal in raw mode
         let _ = write!(stdout(), "\r\n");
     } else {
         let _ = write!(stdout(), "{}", ch as char);

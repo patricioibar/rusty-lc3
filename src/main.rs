@@ -48,7 +48,7 @@ fn main() -> Result<(), i32> {
     }
 
     /* since exactly one condition flag should be set at any given time, set the Z flag */
-    regs[R_COND] = FL_NEG;
+    regs[R_COND] = FL_ZRO;
     /* set the PC to starting position */
     /* 0x3000 is the default */
     regs[R_PC] = PC_START;
@@ -56,8 +56,6 @@ fn main() -> Result<(), i32> {
     // crossterm to poll keyboard events
     crossterm::terminal::enable_raw_mode().map_err(|_| 2)?;
     loop {
-        /* FETCH */
-
         // construct instruction from memory at PC
         let instr = Instruction::from(mem.get(regs[R_PC] as usize));
         regs[R_PC] = regs[R_PC].wrapping_add(1);
