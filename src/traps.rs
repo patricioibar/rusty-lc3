@@ -34,15 +34,20 @@ impl Trap {
                 regs[R_P0] = buf[0] as u16;
             }
             Trap::OUT => {
-                let _ = write!(stdout(), "{}", regs[R_P0] as u8 as char);
+                let ch = regs[R_P0] as u8;
+                write_char(ch);
                 let _ = stdout().flush();
             }
             Trap::PUTS => {
                 let mut i = regs[R_P0] as usize;
-                while let c = mem.get(i)
-                    && c != 0x00
-                {
-                    let _ = stdout().write(&[c as u8]);
+                loop {
+                    let c = mem.get(i);
+                    if c == 0x00 {
+                        break;
+                    }
+                    // just print low bytes
+                    let ch = c as u8;
+                    write_char(ch);
                     i += 1;
                 }
                 let _ = stdout().flush();
@@ -57,24 +62,34 @@ impl Trap {
             }
             Trap::PUTSP => {
                 let mut i = regs[R_P0] as usize;
-                while let c = mem.get(i)
-                    && c != 0x0000
-                {
-                    let _ = stdout().write(&[c as u8]);
-                    if ((c >> 8) as u8) != 0x00 {
-                        let _ = stdout().write(&[(c >> 8) as u8]);
+                loop {
+                    let c = mem.get(i);
+                    if c == 0x0000 {
+                        break;
                     }
+                    let lo = (c & 0x00FF) as u8;
+                    write_char(lo);
+                    let hi = ((c >> 8) & 0x00FF) as u8;
+                    write_char(hi);
                     i += 1;
                 }
                 let _ = stdout().flush();
             }
             Trap::HALT => {
-                let _ = writeln!(stdout(), "HALT");
+                let _ = write!(stdout(), "HALT\r\n");
                 let _ = stdout().flush();
                 return ProgramState::Halted;
             }
         }
         ProgramState::Running
+    }
+}
+
+fn write_char(ch: u8) {
+    if ch == b'\n' {
+        let _ = write!(stdout(), "\r\n");
+    } else {
+        let _ = write!(stdout(), "{}", ch as char);
     }
 }
 
