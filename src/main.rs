@@ -60,14 +60,13 @@ fn main() -> Result<(), i32> {
 
         // construct instruction from memory at PC
         let instr = Instruction::from(mem.get(regs[R_PC] as usize));
+        regs[R_PC] = regs[R_PC].wrapping_add(1);
         // then evaluate the instruction, passing in the registers and memory
         if instr.eval(&mut regs, &mut mem) == ProgramState::Halted {
             break;
         }
         // this two steps could be combined into one
         // but as this is a didactic project, I prefered to keep them separate for clarity
-
-        regs[R_PC] = regs[R_PC].wrapping_add(1);
     }
     crossterm::terminal::disable_raw_mode().map_err(|_| 2)?;
 
